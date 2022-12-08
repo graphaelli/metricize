@@ -64,6 +64,15 @@ type MetricDoc struct {
 			Name string `json:"name,omitempty"`
 		} `json:"pod,omitempty,omitempty"`
 	} `json:"kubernetes,omitempty"`
+	Metricset struct {
+		Name string `json:"name"`
+	} `json:"metricset"`
+	NumericLabels struct {
+		Period int64 `json:"rollup_period"`
+	} `json:"numeric_labels"`
+	Observer struct {
+		Version string `json:"version"`
+	} `json:"observer"`
 	Service struct {
 		Environment string `json:"environment,omitempty"`
 		Name        string `json:"name,omitempty"`
