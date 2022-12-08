@@ -21,8 +21,8 @@ func TestAggregateSingle(t *testing.T) {
 
 	key := newTransactionAggregationKey(doc)
 	require.NotEmpty(t, key)
-	a := newAggregator(time.Time{})
-	require.NoError(t, a.aggregate(doc))
+	a := NewAggregator(time.Time{})
+	require.NoError(t, a.Aggregate(doc))
 	require.Contains(t, a.buckets, key)
 	require.Len(t, a.buckets, 1)
 }
@@ -41,12 +41,12 @@ func TestAggregateMultiple(t *testing.T) {
 		{name: "bar", counts: []int64{1, 10}, values: []int64{100000, 110000}},
 	}
 
-	a := newAggregator(time.Time{})
+	a := NewAggregator(time.Time{})
 	for _, dist := range dists {
 		doc.Transaction.Name = dist.name
 		doc.Transaction.DurationHistogram.Counts = dist.counts
 		doc.Transaction.DurationHistogram.Values = dist.values
-		require.NoError(t, a.aggregate(doc))
+		require.NoError(t, a.Aggregate(doc))
 	}
 	require.Len(t, a.buckets, 2)
 }

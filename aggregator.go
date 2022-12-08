@@ -55,7 +55,7 @@ func (t *transactionMetrics) Emit() DurationHistogram {
 	}
 }
 
-type aggregator struct {
+type Aggregator struct {
 	start   time.Time
 	buckets map[transactionAggregationKey]*transactionMetrics
 }
@@ -178,11 +178,11 @@ func (t *transactionAggregationKey) Emit(start time.Time, dh DurationHistogram) 
 	return m
 }
 
-func newAggregator(start time.Time) *aggregator {
-	return &aggregator{start: start, buckets: make(map[transactionAggregationKey]*transactionMetrics)}
+func NewAggregator(start time.Time) *Aggregator {
+	return &Aggregator{start: start, buckets: make(map[transactionAggregationKey]*transactionMetrics)}
 }
 
-func (a *aggregator) aggregate(doc *MetricDoc) error {
+func (a *Aggregator) Aggregate(doc *MetricDoc) error {
 	key := newTransactionAggregationKey(doc)
 	bucket, ok := a.buckets[key]
 	if !ok {
@@ -212,6 +212,6 @@ func (a *aggregator) aggregate(doc *MetricDoc) error {
 	return nil
 }
 
-func (a *aggregator) Emit(key transactionAggregationKey) MetricDoc {
+func (a *Aggregator) Emit(key transactionAggregationKey) MetricDoc {
 	return key.Emit(a.start, a.buckets[key].Emit())
 }

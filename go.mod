@@ -15,6 +15,8 @@ require (
 	github.com/elastic/beats/v7 v7.0.0-alpha2.0.20221205204510-74edd05ef458 // indirect
 	github.com/elastic/elastic-agent-client/v7 v7.0.2 // indirect
 	github.com/elastic/elastic-agent-libs v0.2.15 // indirect
+	github.com/elastic/elastic-transport-go/v8 v8.1.0 // indirect
+	github.com/elastic/go-elasticsearch/v8 v8.5.0 // indirect
 	github.com/elastic/go-licenser v0.4.1 // indirect
 	github.com/elastic/go-sysinfo v1.9.0 // indirect
 	github.com/elastic/go-ucfg v0.8.6 // indirect

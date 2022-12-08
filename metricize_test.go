@@ -80,10 +80,10 @@ func TestAggregateMetricDocs(t *testing.T) {
 	require.NoError(t, json.Unmarshal(doc1, &ms1))
 	require.NoError(t, json.Unmarshal(doc2, &ms2))
 
-	a := newAggregator(time.Time{})
-	require.NoError(t, a.aggregate(&ms1))
+	a := NewAggregator(time.Time{})
+	require.NoError(t, a.Aggregate(&ms1))
 	require.Len(t, a.buckets, 1)
-	require.NoError(t, a.aggregate(&ms2))
+	require.NoError(t, a.Aggregate(&ms2))
 	require.Len(t, a.buckets, 1)
 
 	expectedMetricDoc := ms1
