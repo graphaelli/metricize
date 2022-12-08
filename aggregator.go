@@ -1,8 +1,9 @@
 package metricize
 
 import (
-	"github.com/elastic/go-hdrhistogram"
 	"time"
+
+	"github.com/elastic/go-hdrhistogram"
 )
 
 const (
