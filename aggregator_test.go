@@ -23,8 +23,8 @@ func TestAggregateSingle(t *testing.T) {
 	require.NotEmpty(t, key)
 	a := NewAggregator(time.Time{})
 	require.NoError(t, a.Aggregate(doc))
-	require.Contains(t, a.buckets, key)
-	require.Len(t, a.buckets, 1)
+	require.Contains(t, a.Buckets, key)
+	require.Len(t, a.Buckets, 1)
 }
 
 func TestAggregateMultiple(t *testing.T) {
@@ -48,5 +48,5 @@ func TestAggregateMultiple(t *testing.T) {
 		doc.Transaction.DurationHistogram.Values = dist.values
 		require.NoError(t, a.Aggregate(doc))
 	}
-	require.Len(t, a.buckets, 2)
+	require.Len(t, a.Buckets, 2)
 }

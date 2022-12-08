@@ -82,9 +82,9 @@ func TestAggregateMetricDocs(t *testing.T) {
 
 	a := NewAggregator(time.Time{})
 	require.NoError(t, a.Aggregate(&ms1))
-	require.Len(t, a.buckets, 1)
+	require.Len(t, a.Buckets, 1)
 	require.NoError(t, a.Aggregate(&ms2))
-	require.Len(t, a.buckets, 1)
+	require.Len(t, a.Buckets, 1)
 
 	expectedMetricDoc := ms1
 	expectedMetricDoc.Timestamp = time.Time{}

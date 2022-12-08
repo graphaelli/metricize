@@ -57,7 +57,7 @@ func (t *transactionMetrics) Emit() DurationHistogram {
 
 type Aggregator struct {
 	start   time.Time
-	buckets map[transactionAggregationKey]*transactionMetrics
+	Buckets map[transactionAggregationKey]*transactionMetrics
 }
 
 type aggKeyDims struct {
@@ -179,12 +179,12 @@ func (t *transactionAggregationKey) Emit(start time.Time, dh DurationHistogram) 
 }
 
 func NewAggregator(start time.Time) *Aggregator {
-	return &Aggregator{start: start, buckets: make(map[transactionAggregationKey]*transactionMetrics)}
+	return &Aggregator{start: start, Buckets: make(map[transactionAggregationKey]*transactionMetrics)}
 }
 
 func (a *Aggregator) Aggregate(doc *MetricDoc) error {
 	key := newTransactionAggregationKey(doc)
-	bucket, ok := a.buckets[key]
+	bucket, ok := a.Buckets[key]
 	if !ok {
 		bucket = &transactionMetrics{
 			earliest: doc.Timestamp,
@@ -195,7 +195,7 @@ func (a *Aggregator) Aggregate(doc *MetricDoc) error {
 				hdrHistogramSignificantFigures,
 			),
 		}
-		a.buckets[key] = bucket
+		a.Buckets[key] = bucket
 	} else {
 		if doc.Timestamp.Before(bucket.earliest) {
 			bucket.earliest = doc.Timestamp
@@ -213,5 +213,5 @@ func (a *Aggregator) Aggregate(doc *MetricDoc) error {
 }
 
 func (a *Aggregator) Emit(key transactionAggregationKey) MetricDoc {
-	return key.Emit(a.start, a.buckets[key].Emit())
+	return key.Emit(a.start, a.Buckets[key].Emit())
 }
