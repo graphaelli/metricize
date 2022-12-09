@@ -229,7 +229,7 @@ func main() {
 	startBucket := int(math.Floor(startSec/interval.Seconds()) * interval.Seconds())
 
 	// required end time
-	var endSec int64 = math.MaxInt
+	var endSec int64
 	t, err := time.Parse(time.RFC3339, *end)
 	if err != nil {
 		log.Fatal(err)
