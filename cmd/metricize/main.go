@@ -304,7 +304,9 @@ func emitRollup(ctx context.Context, es *esv8.Client, targetIndex string, period
 			Errors bool            `json:"errors"`
 			Items  json.RawMessage `json:"items"`
 		}
-		json.NewDecoder(response.Body).Decode(&result)
+		if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
+			return fmt.Errorf("bulk indexing might have failed, eror parsing result: %w", err)
+		}
 		// why isn't this a non-200 and triggered by response.IsError() ?
 		if result.Errors {
 			return fmt.Errorf("bulk indexing failed with: %s", string(result.Items))
