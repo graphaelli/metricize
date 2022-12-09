@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"text/template"
 	"time"
 
 	esv8 "github.com/elastic/go-elasticsearch/v8"
@@ -67,6 +68,63 @@ func minTime(ctx context.Context, es *esv8.Client, index string) (float64, error
 		return 0, fmt.Errorf("no metrics found in %q", index)
 	}
 	return result.Aggregations.Start.Value.Float64()
+}
+
+func rollupExists(ctx context.Context, es *esv8.Client, index string, interval, bucket int64) (bool, error) {
+	q := template.Must(template.New("").Parse(`{
+    "size": 1,
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "term": {
+              "metricset.name": "transaction_rollup"
+            }
+          },
+          {
+            "term": {
+              "numeric_labels.rollup_period": {{.Interval}}
+            }
+          },
+          {
+            "term": {
+              "@timestamp": {{.Bucket}}
+            }
+          }
+        ]
+      }
+    }
+}`))
+
+	var body bytes.Buffer
+	data := struct{ Bucket, Interval int64 }{
+		Bucket: bucket * 1000, Interval: interval,
+	}
+	if err := q.Execute(&body, &data); err != nil {
+		return true, err
+	}
+	rsp, err := es.Search(
+		es.Search.WithContext(ctx),
+		es.Search.WithBody(&body),
+		es.Search.WithIndex(index),
+		es.Search.WithTrackTotalHits(false),
+	)
+	if err != nil {
+		return true, err
+	}
+	defer rsp.Body.Close()
+	if rsp.IsError() {
+		return true, errors.New(rsp.String())
+	}
+	var result struct {
+		Hits struct {
+			Hits []json.RawMessage `json:"hits"`
+		} `json:"hits"`
+	}
+	if err := json.NewDecoder(rsp.Body).Decode(&result); err != nil {
+		return true, err
+	}
+	return len(result.Hits.Hits) > 0, nil
 }
 
 func rollup(ctx context.Context, es *esv8.Client, index string, start, end int64) (*metricize.Aggregator, error) {
@@ -238,16 +296,25 @@ func main() {
 
 	bucket := int64(startBucket)
 	step := int64(interval.Seconds())
-	for bucket < endSec {
+	for ; bucket < endSec; bucket += step {
+		// TODO: option to validate existing rollup
+		exists, err := rollupExists(ctx, es, *index, step, bucket)
+		if err != nil {
+			log.Fatal(fmt.Errorf("while checking if rollup exists for %d: %w",
+				time.Unix(bucket, 0).String(), err))
+		}
+		if exists {
+			log.Printf("skippping existing rollup for %s", time.Unix(bucket, 0).String())
+			continue
+		}
 		log.Printf("rolling up %s", time.Unix(bucket, 0).String())
 		a, err := rollup(ctx, es, *index, bucket, bucket+step)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(fmt.Errorf("while rolling up %d: %w", time.Unix(bucket, 0).String(), err))
 		}
 		if err := emitRollup(ctx, es, targetIndex, step, a); err != nil {
-			log.Fatal(err)
+			log.Fatal(fmt.Errorf("while writing rollup for %d: %w", time.Unix(bucket, 0).String(), err))
 		}
-		bucket += step
 	}
 }
 
