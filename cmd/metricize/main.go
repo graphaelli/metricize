@@ -69,7 +69,7 @@ func minTime(ctx context.Context, es *esv8.Client, index string) (float64, error
 	return result.Aggregations.Start.Value.Float64()
 }
 
-func rollup(ctx context.Context, es *esv8.Client, index string, start, end int64) *metricize.Aggregator {
+func rollup(ctx context.Context, es *esv8.Client, index string, start, end int64) (*metricize.Aggregator, error) {
 	pitKeepAlive := "5m"
 
 	rsp, err := es.OpenPointInTime(
@@ -77,16 +77,16 @@ func rollup(ctx context.Context, es *esv8.Client, index string, start, end int64
 		pitKeepAlive,
 		es.OpenPointInTime.WithContext(ctx))
 	if err != nil {
-		log.Fatal("while creating PIT: ", err)
+		return nil, fmt.Errorf("while creating PIT: %w", err)
 	}
 	if rsp.IsError() {
-		log.Fatal("while creating PIT: ", rsp.String())
+		return nil, fmt.Errorf("while creating PIT: %s", rsp.String())
 	}
 	var pit struct {
 		ID string `json:"id"`
 	}
 	if err := json.NewDecoder(rsp.Body).Decode(&pit); err != nil {
-		log.Fatal("while parsing PIT response: ", err)
+		return nil, fmt.Errorf("while parsing PIT response: %w", err)
 	}
 	defer func() {
 		if _, err := es.ClosePointInTime(
@@ -142,10 +142,10 @@ func rollup(ctx context.Context, es *esv8.Client, index string, start, end int64
 			es.Search.WithBody(body),
 		)
 		if err != nil {
-			log.Fatal(err)
+			return nil, fmt.Errorf("while searching with pagination query: %w", err)
 		}
 		if rsp.IsError() {
-			log.Fatal(rsp.String())
+			return nil, fmt.Errorf("while searching with pagingation query: %s", rsp.String())
 		}
 
 		var result struct {
@@ -159,7 +159,7 @@ func rollup(ctx context.Context, es *esv8.Client, index string, start, end int64
 		}
 		defer rsp.Body.Close()
 		if err := json.NewDecoder(rsp.Body).Decode(&result); err != nil {
-			log.Fatal(err)
+			return nil, fmt.Errorf("while decoding pagination query: %w", err)
 		}
 		if len(result.Hits.Hits) == 0 {
 			break
@@ -167,9 +167,8 @@ func rollup(ctx context.Context, es *esv8.Client, index string, start, end int64
 
 		var lastSort []interface{}
 		for _, d := range result.Hits.Hits {
-			//log.Println("adding", d)
 			if err := a.Aggregate(&d.Source); err != nil {
-				log.Fatal(err)
+				return nil, fmt.Errorf("while aggregating %+v: %w", d, err)
 			}
 			lastSort = d.Sort
 		}
@@ -180,7 +179,7 @@ func rollup(ctx context.Context, es *esv8.Client, index string, start, end int64
 			"keep_alive": pitKeepAlive,
 		}
 	}
-	return a
+	return a, nil
 }
 
 func main() {
@@ -241,7 +240,10 @@ func main() {
 	step := int64(interval.Seconds())
 	for bucket < endSec {
 		log.Printf("rolling up %s", time.Unix(bucket, 0).String())
-		a := rollup(ctx, es, *index, bucket, bucket+step)
+		a, err := rollup(ctx, es, *index, bucket, bucket+step)
+		if err != nil {
+			log.Fatal(err)
+		}
 		if err := emitRollup(ctx, es, targetIndex, step, a); err != nil {
 			log.Fatal(err)
 		}
