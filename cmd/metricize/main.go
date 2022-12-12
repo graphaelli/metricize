@@ -243,7 +243,7 @@ func rollup(ctx context.Context, es *esv8.Client, index string, start, end int64
 func main() {
 	log.Default().SetFlags(log.Ldate | log.Ltime | log.Llongfile)
 	start := flag.String("start", "", "start time, now: "+time.Now().UTC().Format(time.RFC3339))
-	end := flag.String("end", time.Now().UTC().Format(time.RFC3339), "end time")
+	end := flag.String("end", "", "end time, now: "+time.Now().UTC().Format(time.RFC3339))
 	interval := flag.Duration("i", 10*time.Minute, "rollup interval size, defaults to 10m (for 10 minutes)")
 	index := flag.String("index", "metrics-apm*", "Elasticsearch Index")
 	skipTLSVerify := flag.Bool("k", false, "InsecureSkipVerify")
@@ -288,11 +288,17 @@ func main() {
 
 	// required end time
 	var endSec int64
-	t, err := time.Parse(time.RFC3339, *end)
-	if err != nil {
-		log.Fatal(err)
+	if *end == "" {
+		// stop 1 bucket before the one including the current time since the current bucket could still be written to
+		endSec = int64(
+			math.Floor(float64(time.Now().UTC().Unix())/interval.Seconds())*interval.Seconds() - interval.Seconds())
+	} else {
+		t, err := time.Parse(time.RFC3339, *end)
+		if err != nil {
+			log.Fatal(err)
+		}
+		endSec = t.Unix()
 	}
-	endSec = t.Unix()
 
 	bucket := int64(startBucket)
 	step := int64(interval.Seconds())
