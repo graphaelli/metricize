@@ -300,7 +300,7 @@ func main() {
 		// TODO: option to validate existing rollup
 		exists, err := rollupExists(ctx, es, *index, step, bucket)
 		if err != nil {
-			log.Fatal(fmt.Errorf("while checking if rollup exists for %d: %w",
+			log.Fatal(fmt.Errorf("while checking if rollup exists for %s: %w",
 				time.Unix(bucket, 0).String(), err))
 		}
 		if exists {
@@ -310,10 +310,10 @@ func main() {
 		log.Printf("rolling up %s", time.Unix(bucket, 0).String())
 		a, err := rollup(ctx, es, *index, bucket, bucket+step)
 		if err != nil {
-			log.Fatal(fmt.Errorf("while rolling up %d: %w", time.Unix(bucket, 0).String(), err))
+			log.Fatal(fmt.Errorf("while rolling up %s: %w", time.Unix(bucket, 0).String(), err))
 		}
 		if err := emitRollup(ctx, es, targetIndex, step, a); err != nil {
-			log.Fatal(fmt.Errorf("while writing rollup for %d: %w", time.Unix(bucket, 0).String(), err))
+			log.Fatal(fmt.Errorf("while writing rollup for %s: %w", time.Unix(bucket, 0).String(), err))
 		}
 	}
 }
@@ -335,13 +335,13 @@ func createIndex(ctx context.Context, es *esv8.Client, targetIndex string) error
 		if response.IsError() {
 			io.Copy(os.Stderr, response.Body)
 			response.Body.Close()
-			return errors.New("creating index mapping failed")
+			return errors.New("creating data stream failed")
 		}
 		response.Body.Close()
 	} else if response.IsError() {
 		io.Copy(os.Stderr, response.Body)
 		response.Body.Close()
-		return errors.New("creating index mapping failed")
+		return errors.New("creating data stream failed")
 	} else {
 		response.Body.Close()
 	}
@@ -383,7 +383,7 @@ func emitRollup(ctx context.Context, es *esv8.Client, targetIndex string, period
 	const limit = 512 * 1024 // 512KiB limit for bulk request body
 	var ndocs int
 	enc := json.NewEncoder(&buf)
-	for key, _ := range a.Buckets {
+	for key := range a.Buckets {
 		doc := a.Emit(key)
 		doc.Metricset.Name = "transaction_rollup"
 		doc.NumericLabels.Period = period
